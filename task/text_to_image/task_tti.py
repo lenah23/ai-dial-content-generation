@@ -8,50 +8,78 @@ from task._utils.model_client import DialModelClient
 from task._models.message import Message
 from task._models.role import Role
 
+
 class Size:
-    """
-    The size of the generated image.
-    """
     square: str = '1024x1024'
     height_rectangle: str = '1024x1792'
     width_rectangle: str = '1792x1024'
 
 
 class Style:
-    """
-    The style of the generated image. Must be one of vivid or natural.
-     - Vivid causes the model to lean towards generating hyper-real and dramatic images.
-     - Natural causes the model to produce more natural, less hyper-real looking images.
-    """
     natural: str = "natural"
     vivid: str = "vivid"
 
 
 class Quality:
-    """
-    The quality of the image that will be generated.
-     - ‘hd’ creates images with finer details and greater consistency across the image.
-    """
     standard: str = "standard"
     hd: str = "hd"
 
+
 async def _save_images(attachments: list[Attachment]):
-    # TODO:
-    #  1. Create DIAL bucket client
-    #  2. Iterate through Images from attachments, download them and then save here
-    #  3. Print confirmation that image has been saved locally
-    raise NotImplementedError
+    # 1. Create DIAL bucket client using async context manager
+    async with DialBucketClient(base_url=DIAL_URL, api_key=API_KEY) as bucket_client:
+
+        # 2. Iterate through images from attachments, download and save locally
+        for attachment in attachments:
+            if attachment.type and attachment.type.startswith("image/"):
+                image_data = await bucket_client.get_file(attachment.url)
+
+                filename = attachment.title or f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+
+                with open(filename, "wb") as f:
+                    f.write(image_data)
+
+                # 3. Print confirmation
+                print(f"Image saved locally: {filename}")
 
 
 def start() -> None:
-    # TODO:
-    #  1. Create DialModelClient
-    #  2. Generate image for "Sunny day on Bali"
-    #  3. Get attachments from response and save generated message (use method `_save_images`)
-    #  4. Try to configure the picture for output via `custom_fields` parameter.
-    #    - Documentation: See `custom_fields`. https://dialx.ai/dial_api#operation/sendChatCompletionRequest
-    #  5. Test it with the 'imagegeneration@005' (Google image generation model)
-    raise NotImplementedError
+    # 1. Create DialModelClient
+    client = DialModelClient(
+        endpoint=DIAL_CHAT_COMPLETIONS_ENDPOINT,
+        deployment_name="dall-e-3",
+        api_key=API_KEY,
+    )
+
+    # 2. Generate image for "Sunny day on Bali"
+    prompt_message = Message(
+        role=Role.USER,
+        content="Sunny day on Bali",
+    )
+
+    # 4. Configure the picture output via custom_fields
+    custom_fields = {
+        "size": Size.width_rectangle,
+        "quality": Quality.hd,
+        "style": Style.vivid,
+    }
+
+    # 5. Send request to the image generation model
+    response = client.get_completion(
+        messages=[prompt_message],
+        custom_fields=custom_fields,
+    )
+
+    # 3. Get attachments via response.custom_content.attachments
+    attachments: list[Attachment] = (
+        response.custom_content.attachments if response.custom_content else []
+    ) or []
+
+    if not attachments:
+        print("No attachments returned in the response.")
+        return
+
+    asyncio.run(_save_images(attachments))
 
 
 start()
