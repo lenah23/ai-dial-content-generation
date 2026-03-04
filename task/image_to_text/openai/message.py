@@ -27,7 +27,7 @@ class ImgContent:
     def to_dict(self) -> dict[str, Any]:
         return {
             "image_url": self.image_url.to_dict(),
-            "type": self.type.value
+            "type": self.type
         }
 
 
@@ -39,7 +39,7 @@ class TxtContent:
     def to_dict(self) -> dict[str, Any]:
         return {
             "text": self.text,
-            "type": self.type.value
+            "type": self.type
         }
 
 
