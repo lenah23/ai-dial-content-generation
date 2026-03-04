@@ -34,7 +34,8 @@ async def _save_images(attachments: list[Attachment]):
             if attachment.type and attachment.type.startswith("image/"):
                 image_data = await bucket_client.get_file(attachment.url)
 
-                filename = attachment.title or f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                base_name = attachment.title or f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                filename = base_name if '.' in base_name else f"{base_name}.png"
 
                 with open(filename, "wb") as f:
                     f.write(image_data)
